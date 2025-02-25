@@ -2,7 +2,6 @@ use std::env;
 use std::io;
 use std::io::prelude::*;
 use std::path::Path;
-use colored::Colorize;
 
 use lscolors::{LsColors, Style};
 
@@ -82,7 +81,7 @@ fn run() -> io::Result<()> {
             let path = Path::new(path_str.as_ref());
             if !path.exists() {
                 // Print whole red line for the path-not-found case
-                writeln!(stdout, "{}", path_str.red())?;
+                writeln!(stdout, "\x1b[31m{}\x1b[0m", path_str)?;
             } else {
                 print_path(&mut stdout, &ls_colors, path_str.as_ref(), path.is_dir())?;
             }
