@@ -42,7 +42,7 @@ fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str, trailing
             write!(handle, "{}", component.to_string_lossy().style(ansi_style))?;
         }
     }
-    if trailing_slash {
+    if trailing_slash && !path.eq("/") {
         write!(handle, "/")?;
     }
     writeln!(handle)?;
