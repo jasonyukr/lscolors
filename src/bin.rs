@@ -16,7 +16,7 @@ compile_error!(
     "one feature must be enabled: ansi_term, nu-ansi-term, crossterm, gnu_legacy, owo-colors"
 );
 
-fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str, trailing_slash: bool) -> io::Result<()> {
+fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str, is_dir: bool) -> io::Result<()> {
     for (component, style) in ls_colors.style_for_path_components(Path::new(path)) {
         #[cfg(any(feature = "nu-ansi-term", feature = "gnu_legacy"))]
         {
@@ -42,7 +42,7 @@ fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str, trailing
             write!(handle, "{}", component.to_string_lossy().style(ansi_style))?;
         }
     }
-    if trailing_slash && !path.eq("/") {
+    if is_dir && !path.eq("/") {
         write!(handle, "/")?;
     }
     writeln!(handle)?;
@@ -63,7 +63,12 @@ fn run() -> io::Result<()> {
         args.next();
 
         for arg in args {
-            print_path(&mut stdout, &ls_colors, &arg, false)?;
+            let path = Path::new(&arg);
+            if !path.exists() {
+                writeln!(stdout, "\x1b[31m{}\x1b[0m", arg)?; // red line for the path-not-found case
+            } else {
+                print_path(&mut stdout, &ls_colors, &arg, path.is_dir())?;
+            }
         }
     } else {
         let stdin = io::stdin();
@@ -80,8 +85,7 @@ fn run() -> io::Result<()> {
 
             let path = Path::new(path_str.as_ref());
             if !path.exists() {
-                // Print whole red line for the path-not-found case
-                writeln!(stdout, "\x1b[31m{}\x1b[0m", path_str)?;
+                writeln!(stdout, "\x1b[31m{}\x1b[0m", path_str)?; // red line for the path-not-found case
             } else {
                 print_path(&mut stdout, &ls_colors, path_str.as_ref(), path.is_dir())?;
             }
