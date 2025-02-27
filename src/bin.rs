@@ -109,6 +109,20 @@ fn run() -> io::Result<()> {
         args.next();
 
         for arg in args {
+            if home_dir.len() > 0 {
+                if let Some(pos) = arg.find("~/") {
+                    if pos == 0 {
+                        let path_conv_str = arg.replacen("~", &home_dir, 1);
+                        let path = Path::new::<str>(path_conv_str.as_ref());
+                        if !path.exists() {
+                            writeln!(stdout, "\x1b[31m{}\x1b[0m", arg)?; // red line for the path-not-found case
+                        } else {
+                            print_tilde_path(&mut stdout, &ls_colors, path_conv_str.as_ref(), home_slash_count, path.is_dir())?;
+                        }
+                        continue;
+                    }
+                }
+            }
             let path = Path::new(&arg);
             if !path.exists() {
                 writeln!(stdout, "\x1b[31m{}\x1b[0m", arg)?; // red line for the path-not-found case
