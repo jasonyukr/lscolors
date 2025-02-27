@@ -94,6 +94,31 @@ fn print_tilde_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str, ho
     Ok(())
 }
 
+fn process_path(handle: &mut dyn Write, ls_colors: &LsColors, path_str: &str, home_slash_count: usize, home_dir: &str) -> io::Result<()> {
+    if home_dir.len() > 0 {
+        if let Some(pos) = path_str.find("~/") {
+            if pos == 0 {
+                let path_conv_str = path_str.replacen("~", &home_dir, 1);
+                let path = Path::new::<str>(path_conv_str.as_ref());
+                if !path.exists() {
+                    writeln!(handle, "\x1b[31m{}\x1b[0m", path_str)?; // red line for the path-not-found case
+                } else {
+                    print_tilde_path(handle, &ls_colors, path_conv_str.as_ref(), home_slash_count, path.is_dir())?;
+                }
+                return Ok(());
+            }
+        }
+    }
+    let path = Path::new::<str>(path_str.as_ref());
+    if !path.exists() {
+        writeln!(handle, "\x1b[31m{}\x1b[0m", path_str)?; // red line for the path-not-found case
+    } else {
+        print_path(handle, &ls_colors, path_str.as_ref(), path.is_dir())?;
+    }
+    return Ok(());
+}
+
+
 fn run() -> io::Result<()> {
     let ls_colors = LsColors::from_env().unwrap_or_default();
     let home_dir = env::var("HOME").unwrap_or_else(|_| "".to_string());
@@ -103,70 +128,17 @@ fn run() -> io::Result<()> {
     let mut stdout = stdout.lock();
 
     let mut args = env::args();
-
     if args.len() >= 2 {
-        // Skip program name
-        args.next();
-
-        for arg in args {
-            if home_dir.len() > 0 {
-                if let Some(pos) = arg.find("~/") {
-                    if pos == 0 {
-                        let path_conv_str = arg.replacen("~", &home_dir, 1);
-                        let path = Path::new::<str>(path_conv_str.as_ref());
-                        if !path.exists() {
-                            writeln!(stdout, "\x1b[31m{}\x1b[0m", arg)?; // red line for the path-not-found case
-                        } else {
-                            print_tilde_path(&mut stdout, &ls_colors, path_conv_str.as_ref(), home_slash_count, path.is_dir())?;
-                        }
-                        continue;
-                    }
-                }
-            }
-            let path = Path::new(&arg);
-            if !path.exists() {
-                writeln!(stdout, "\x1b[31m{}\x1b[0m", arg)?; // red line for the path-not-found case
-            } else {
-                print_path(&mut stdout, &ls_colors, &arg, path.is_dir())?;
-            }
+        args.next(); // skip program name
+        for path_str in args {
+            process_path(&mut stdout, &ls_colors, &path_str, home_slash_count, &home_dir)?;
         }
     } else {
         let stdin = io::stdin();
-        let mut buf = vec![];
-
-        while let Ok(size) = stdin.lock().read_until(b'\n', &mut buf) {
-            if size == 0 {
-                break;
+        for line in stdin.lock().lines() {
+            if let Ok(path_str) = line {
+                process_path(&mut stdout, &ls_colors, &path_str, home_slash_count, &home_dir)?;
             }
-
-            let path_str = String::from_utf8_lossy(&buf[..(buf.len() - 1)]);
-            #[cfg(windows)]
-            let path_str = path_str.trim_end_matches('\r');
-
-            if home_dir.len() > 0 {
-                if let Some(pos) = path_str.find("~/") {
-                    if pos == 0 {
-                        let path_conv_str = path_str.replacen("~", &home_dir, 1);
-                        let path = Path::new::<str>(path_conv_str.as_ref());
-                        if !path.exists() {
-                            writeln!(stdout, "\x1b[31m{}\x1b[0m", path_str)?; // red line for the path-not-found case
-                        } else {
-                            print_tilde_path(&mut stdout, &ls_colors, path_conv_str.as_ref(), home_slash_count, path.is_dir())?;
-                        }
-                        buf.clear();
-                        continue;
-                    }
-                }
-            }
-
-            let path = Path::new(path_str.as_ref());
-            if !path.exists() {
-                writeln!(stdout, "\x1b[31m{}\x1b[0m", path_str)?; // red line for the path-not-found case
-            } else {
-                print_path(&mut stdout, &ls_colors, path_str.as_ref(), path.is_dir())?;
-            }
-
-            buf.clear();
         }
     }
 
