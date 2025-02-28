@@ -101,7 +101,7 @@ fn process_path(handle: &mut dyn Write, ls_colors: &LsColors, path_str: &str, ho
                 let path_conv_str = path_str.replacen("~", &home_dir, 1);
                 let path = Path::new::<str>(path_conv_str.as_ref());
                 if !path.exists() {
-                    writeln!(handle, "\x1b[31m{}\x1b[0m", path_str)?; // red line for the path-not-found case
+                    writeln!(handle, "\x1b[38;2;255;165;0m{}\x1b[0m", path_str)?; // orange line for the path-not-found case
                 } else {
                     print_tilde_path(handle, &ls_colors, path_conv_str.as_ref(), home_slash_count, path.is_dir())?;
                 }
@@ -111,7 +111,7 @@ fn process_path(handle: &mut dyn Write, ls_colors: &LsColors, path_str: &str, ho
     }
     let path = Path::new::<str>(path_str.as_ref());
     if !path.exists() {
-        writeln!(handle, "\x1b[31m{}\x1b[0m", path_str)?; // red line for the path-not-found case
+        writeln!(handle, "\x1b[38;2;255;165;0m{}\x1b[0m", path_str)?; // orange line for the path-not-found case
     } else {
         print_path(handle, &ls_colors, path_str.as_ref(), path.is_dir())?;
     }
